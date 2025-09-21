@@ -1,3 +1,4 @@
+# Add these imports at the top of app.py
 import os
 import json
 import signal
@@ -204,8 +205,70 @@ def compute_payload() -> Dict[str, Any]:
         logger.error(f"Error in compute_payload: {e}")
         return {"areas": [], "redzones": [], "mapPath": None, "error": str(e)}
 
-# Keep your existing helper functions (safe_float, build_date_string, etc.)
-# ... [rest of your helper functions remain the same]
+# Essential fields and helper functions
+essential_fields = {
+    "state_ut": 1,
+    "district": 1,
+    "Disease": 1,
+    "Cases": 1,
+    "Deaths": 1,
+    "Latitude": 1,
+    "Longitude": 1,
+    "year": 1,
+    "mon": 1,
+    "day": 1,
+    "week_of_outbreak": 1,
+}
+
+def safe_float(x):
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+def build_date_string(year, mon, day):
+    try:
+        if pd.notnull(year) and pd.notnull(mon) and pd.notnull(day):
+            return f"{int(year):04d}-{int(mon):02d}-{int(day):02d}"
+        if pd.notnull(year) and pd.notnull(mon):
+            return f"{int(year):04d}-{int(mon):02d}"
+        if pd.notnull(year):
+            return f"{int(year):04d}"
+    except Exception:
+        pass
+    return "N/A"
+
+def row_date(row: Dict[str, Any]) -> str:
+    s = build_date_string(row.get('year'), row.get('mon'), row.get('day'))
+    if s == 'N/A':
+        w = row.get('week_of_outbreak')
+        if isinstance(w, str) and w.strip():
+            return w
+    return s
+
+def band_from_percent(p: float) -> str:
+    # Green: <= 40, Yellow: > 40 and < 60, Red: >= 60
+    if p >= 60:
+        return 'red'
+    if p > 40:
+        return 'yellow'
+    return 'green'
+
+def band_emoji(band: str) -> str:
+    return {'red': '🔴', 'yellow': '🟡', 'green': '🟢'}.get(band, '🟢')
+
+def pick_collection(db) -> str:
+    # Prefer explicit env override, else try 'Dieses_data' then fallback to 'Disease_Data'
+    env_coll = os.environ.get('MONGO_COLL')
+    if env_coll:
+        return env_coll
+    try:
+        colls = set(db.list_collection_names())
+    except Exception:
+        colls = set()
+    if 'Dieses_data' in colls:
+        return 'Dieses_data'
+    return 'Disease_Data'
 
 # -------------------------
 # Flask API wrapper with better error handling
