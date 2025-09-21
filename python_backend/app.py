@@ -210,7 +210,7 @@ def compute_payload() -> Dict[str, Any]:
             ).add_to(m)
 
         # Ensure map is saved under the Node app's public/maps directory
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(_file_)))  # project root
         maps_dir = os.path.join(base_dir, 'public', 'maps')
         os.makedirs(maps_dir, exist_ok=True)
         map_path = os.path.join(maps_dir, 'india_hotspot_map.html')
@@ -225,8 +225,8 @@ def compute_payload() -> Dict[str, Any]:
 # -------------------------
 # Flask API wrapper
 # -------------------------
-app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+app = Flask(_name_)
+CORS(app, resources={r"/api/": {"origins": ""}})
 
 
 @app.route('/health', methods=['GET'])
@@ -244,7 +244,7 @@ def predict():
 
 
 if __name__ == '__main__':
-    host = os.environ.get('FLASK_HOST', '127.0.0.1')
-    port = int(os.environ.get('FLASK_PORT', '5000'))
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')  # use 0.0.0.0 so Render can access it
+    port = int(os.environ.get('FLASK_PORT') or os.environ.get('PORT', '5000'))
     debug = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(host=host, port=port, debug=debug)
