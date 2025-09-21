@@ -40,12 +40,14 @@ def get_mongo_client():
 def compute_thresholds_per_disease_cached(disease_cases_tuple, min_cases: float = 50.0) -> Dict[str, float]:
     """
     Cached version of threshold computation.
+    disease_cases_tuple should be a tuple of (disease_name, tuple_of_cases)
     """
     thresholds = {}
-    disease_cases = dict(disease_cases_tuple)
     
-    for disease, cases_list in disease_cases.items():
+    for disease, cases_tuple in disease_cases_tuple:
         try:
+            # Convert tuple back to list for pandas Series
+            cases_list = list(cases_tuple)
             vals = pd.Series(cases_list).fillna(0)
             q75 = float(vals.quantile(0.75))
         except Exception:
@@ -108,13 +110,14 @@ def compute_payload() -> Dict[str, Any]:
             if "Disease" not in df.columns:
                 df["Disease"] = ""
 
-            # Create cacheable tuple for thresholds
+            # Create cacheable tuple for thresholds - FIX: Convert lists to tuples
             disease_cases = {}
             for disease, group in df.groupby('Disease'):
                 cases = pd.to_numeric(group['Cases'], errors='coerce').fillna(0).tolist()
-                disease_cases[str(disease) if disease is not None else ""] = cases
+                # Convert list to tuple to make it hashable
+                disease_cases[str(disease) if disease is not None else ""] = tuple(cases)
             
-            # Convert to tuple for caching
+            # Convert to tuple for caching - now all elements are hashable
             disease_cases_tuple = tuple(sorted(disease_cases.items()))
             thresholds = compute_thresholds_per_disease_cached(disease_cases_tuple, min_cases=50.0)
             
@@ -183,13 +186,13 @@ def compute_payload() -> Dict[str, Any]:
                     popup=popup_text
                 ).add_to(m)
 
-            # Ensure map is saved under the Node app's public/maps directory
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root
-            maps_dir = os.path.join(base_dir, 'public', 'maps')
-            os.makedirs(maps_dir, exist_ok=True)
-            map_path = os.path.join(maps_dir, 'india_hotspot_map.html')
+            # Since you're hosting Flask separately, save map to static folder instead
+            # Remove the Node.js path logic
+            static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+            os.makedirs(static_dir, exist_ok=True)
+            map_path = os.path.join(static_dir, 'india_hotspot_map.html')
             m.save(map_path)
-            map_url_path = '/maps/india_hotspot_map.html'
+            map_url_path = '/static/india_hotspot_map.html'
             
         except Exception as e:
             logger.error(f"Map generation error: {e}")
@@ -275,6 +278,13 @@ def pick_collection(db) -> str:
 # -------------------------
 app = Flask(__name__)
 CORS(app, resources={r"/api/": {"origins": "*"}})
+
+# Add static file serving for maps
+from flask import send_from_directory
+@app.route('/static/<filename>')
+def static_files(filename):
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+    return send_from_directory(static_dir, filename)
 
 # Add request timeout handling
 from werkzeug.serving import WSGIRequestHandler
