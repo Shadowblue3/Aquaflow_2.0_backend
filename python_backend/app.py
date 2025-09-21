@@ -210,7 +210,7 @@ def compute_payload() -> Dict[str, Any]:
             ).add_to(m)
 
         # Ensure map is saved under the Node app's public/maps directory
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(_file_)))  # project root
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root
         maps_dir = os.path.join(base_dir, 'public', 'maps')
         os.makedirs(maps_dir, exist_ok=True)
         map_path = os.path.join(maps_dir, 'india_hotspot_map.html')
@@ -225,8 +225,8 @@ def compute_payload() -> Dict[str, Any]:
 # -------------------------
 # Flask API wrapper
 # -------------------------
-app = Flask(_name_)
-CORS(app, resources={r"/api/": {"origins": ""}})
+app = Flask(__name__)
+CORS(app, resources={r"/api/": {"origins": "*"}})
 
 
 @app.route('/health', methods=['GET'])
